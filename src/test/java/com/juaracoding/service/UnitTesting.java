@@ -30,7 +30,6 @@
 
     import java.util.*;
 
-    import static org.codehaus.groovy.runtime.DefaultGroovyMethods.any;
     import static org.junit.jupiter.api.Assertions.assertEquals;
     import static org.mockito.Mockito.when;
 
@@ -86,7 +85,6 @@
 
         @InjectMocks
         private AbsenService absenService;
-
 
         @BeforeEach
         void setUp() {

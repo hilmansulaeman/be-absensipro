@@ -1,11 +1,17 @@
 package com.juaracoding.service;
 
 import com.juaracoding.core.IService;
+import com.juaracoding.dto.validasi.RegisDTO;
 import com.juaracoding.model.Userz;
 import com.juaracoding.repo.UserRepository;
 import com.juaracoding.utils.ConstantMessage;
 import com.juaracoding.utils.GlobalFunction;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +28,10 @@ public class UserService implements IService<Userz> {
     @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    public Optional<Userz> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     @Override
@@ -108,4 +118,20 @@ public class UserService implements IService<Userz> {
 
         return GlobalFunction.customDataDitemukan("Filtered users", users.getContent(), request);
     }
+
+    public boolean existsByUsername(@NotNull @NotBlank @NotEmpty @Pattern(regexp = "^([a-z0-9]{8,25})$",
+            message = "Format Huruf kecil dan numeric saja min 8 max 25 karakter, contoh : paulchihuy123") String username) {
+        return false;
+    }
+
+    public boolean existsByEmail(@NotNull @NotBlank @NotEmpty @Pattern(regexp = "^(?=.{1,256})(?=.{1,64}@.{1,255}$)(?:(?![.])[a-zA-Z0-9._%+-]+(?:(?<!\\\\)[.][a-zA-Z0-9-]+)*?)@[a-zA-Z0-9.-]+(?:\\.[a-zA-Z]{2,50})+$",
+            message = "Format tidak valid contoh : user_name123@sub.domain.com") String email) {
+        return false;
+    }
+
+    public Userz registerUser(@Valid RegisDTO regisDTO) {
+        return null;
+    }
+
+
 }

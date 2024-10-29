@@ -13,6 +13,10 @@ public class EmployeeResponseDTO {
         this.email = email;
     }
 
+    public EmployeeResponseDTO() {
+
+    }
+
     public long getIdEmployee() {
         return idEmployee;
     }
