@@ -1,67 +1,99 @@
 package com.juaracoding.utils;
 
-import com.juaracoding.handler.ResponseHandler;
-import jakarta.servlet.http.HttpServletRequest;
+import com.juaracoding.dto.response.MenuHeaderResponseDTO;
+import com.juaracoding.model.MenuHeader;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Component
 public class TransformToDTO {
+
     private String sortBy = "";
     private String sort = "";
-
-    /**
-        Method untuk pagination
-        format pengembalian data paging ada disini
-        sesuaikan dengan kebutuhan di FE nanti
-     */
-    public ResponseEntity<Object> transformObject(Map<String,Object> mapz, List ls, Page page
-            , String filterBy, String value, List componentFiltering, HttpServletRequest request)//<PENAMBAHAN 21-12-2023>
+    public Map<String,Object> transformObject(Map<String,Object> mapz, List ls, Page page)
     {
-        /**
-         *  Mengambil informasi sortby berdasarkan dari object page yang diproses sebelumnya
-         *  UNSORTED adalah default dari spring data JPA untuk menghandle value nya tidak di set dari program
-         *  jadi kita gunakan "id" untuk default sortBy dan "asc" untuk default sort
-         */
+        mapz.put("content",ls);
+        mapz.put("currentPage",page.getNumber());
+        mapz.put("totalItems",page.getTotalElements());
+        mapz.put("totalPages",page.getTotalPages());
+        mapz.put("sort",page.getSort());
+        mapz.put("numberOfElements",page.getNumberOfElements());
+
+        return mapz;
+    }
+    public Map<String,Object> transformObject(Map<String,Object> mapz, List ls, Page page,Map<String,String> searchParams)//<PENAMBAHAN 07-03-2023>
+    {
         sortBy = page.getSort().toString().split(":")[0];
         sortBy = sortBy.equals("UNSORTED")?"id":sortBy;
         sort   = sortBy.equals("UNSORTED")?"asc":page.getSort().toString().split(":")[1];
         mapz.put("content",ls);
-        mapz.put("total_items",page.getTotalElements());
-        mapz.put("page_number",page.getNumber());
-        mapz.put("total_pages",page.getTotalPages());
+        mapz.put("totalItems",page.getTotalElements());
+        mapz.put("totalPages",page.getTotalPages());
         mapz.put("sort",sort.trim().toLowerCase());
-        mapz.put("number_of_elements",page.getNumberOfElements());
-        mapz.put("column_name",filterBy);
-//        mapz.put("component-filter",componentFiltering);
-        mapz.put("value",value);
-        return new ResponseHandler().
-                generateResponse("PERMINTAAN DATA BERHASIL",
-                        HttpStatus.OK,
-                        mapz,
-                        null,
-                        request);
+        mapz.put("numberOfElements",page.getNumberOfElements());
+        mapz.put("searchParam",searchParams);
+
+        return mapz;
     }
 
-//    public Map<String,Object> transformObject(Map<String,Object> mapz, List ls, Page page
-//            ,String filterBy,String value,List componentFiltering)//<PENAMBAHAN 21-12-2023>
-//    {
-//        sortBy = page.getSort().toString().split(":")[0];
-//        sortBy = sortBy.equals("UNSORTED")?"id":sortBy;
-//        sort   = sortBy.equals("UNSORTED")?"asc":page.getSort().toString().split(":")[1];
-//        mapz.put("content",ls);
-//        mapz.put("total_items",page.getTotalElements());
-//        mapz.put("total_pages",page.getTotalPages());
-//        mapz.put("sort",sort.trim().toLowerCase());
-//        mapz.put("number_of_elements",page.getNumberOfElements());
-//        mapz.put("column_name",filterBy);
-//        mapz.put("component-filter",componentFiltering);
-//        mapz.put("value",value);
-//        return mapz;
-//    }
-}
+    public Map<String,Object> transformObjectDataEmpty(Map<String,Object> mapz, Pageable pageable, Map<String,String> searchParams)//<PENAMBAHAN 07-03-2023>
+    {
+        sortBy = pageable.getSort().toString().split(":")[0];
+        sort   = sortBy.equals("UNSORTED")?"asc":pageable.getSort().toString().split(":")[1];
+
+        mapz.put("content",new ArrayList<>());
+        mapz.put("totalItems",0);
+        mapz.put("totalPages",0);
+        mapz.put("sort",sort.trim().toLowerCase());
+        mapz.put("numberOfElements",0);
+        mapz.put("searchParam",searchParams);
+
+        return mapz;
+    }
+
+    public Map<String,Object> transformObjectDataEmpty(Map<String,Object> mapz, Map<String,String> searchParams)//<PENAMBAHAN 07-03-2023>
+    {
+        mapz.put("content",new Object());
+        mapz.put("totalItems",0);
+        mapz.put("totalPages",0);
+        mapz.put("sort","asc");
+        mapz.put("numberOfElements",0);
+        mapz.put("searchParam",searchParams);
+
+        return mapz;
+    }
+    public Map<String,Object> transformObjectDataSave(Map<String,Object> mapz,Long idDataSave, Map<String,String> searchParams)//<PENAMBAHAN 07-03-2023>
+    {
+        mapz.put("content",new Object());
+        mapz.put("totalItems",0);
+        mapz.put("totalPages",0);
+        mapz.put("sort","asc");
+        mapz.put("idDataSave",idDataSave);
+        mapz.put("numberOfElements",0);
+        mapz.put("searchParam",searchParams);
+
+        return mapz;
+    }
+
+    public Map<String, Object> transformObjectDataEmpty(Map<String, String> mapColumnSearch) {
+        // Implement transformation logic here
+        Map<String, Object> resultMap = new HashMap<>();
+        // Example transformation
+        resultMap.put("columns", mapColumnSearch);
+        return resultMap;
+    }
+
+    public Map<String, Object> transformObject(List<MenuHeaderResponseDTO> listMenuHeaderDTO, Page<MenuHeader> pageMenuHeader, Map<String, String> mapColumnSearch) {
+        // Implement this method similarly
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("data", listMenuHeaderDTO);
+        resultMap.put("total", pageMenuHeader.getTotalElements());
+        return resultMap;
+    }
+    }

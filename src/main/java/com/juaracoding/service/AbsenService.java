@@ -6,9 +6,12 @@ import com.juaracoding.dto.report.AbsenReportDTO;
 import com.juaracoding.model.Absen;
 import com.juaracoding.repo.AbsenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.WebRequest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -33,7 +36,10 @@ public class AbsenService {
     }
 
     public List<AbsenResponseDTO> getAllAbsens() {
-        return absenRepository.findAll().stream()
+        List<Absen> absens = absenRepository.findByIsDelete((byte) 0);
+        System.out.println("Absen list size from repository: " + absens.size()); // Debug statement
+
+        return absens.stream()
                 .map(this::convertToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -45,19 +51,22 @@ public class AbsenService {
     }
 
     public AbsenResponseDTO convertToResponseDTO(Absen absen) {
+        if (absen == null) {
+            return null;
+        }
+
         AbsenResponseDTO dto = new AbsenResponseDTO();
         dto.setIdAbsen(absen.getIdAbsen());
         dto.setAbsenIn(absen.getAbsenIn());
         dto.setAbsenOut(absen.getAbsenOut());
         dto.setIsDelete(absen.getIsDelete());
 
-        // Check if userz is null before accessing its properties
         if (absen.getUserz() != null) {
             dto.setUserId(absen.getUserz().getIdUser());
             dto.setUserName(absen.getUserz().getNamaLengkap());
         } else {
-            dto.setUserId(null);  // or handle it according to your business logic
-            dto.setUserName("Unknown User"); // or any other default value
+            dto.setUserId(null);
+            dto.setUserName("Unknown User"); // Provide a default value if necessary
         }
 
         return dto;
@@ -69,10 +78,53 @@ public class AbsenService {
         reportDTO.setIdAbsen(absen.getIdAbsen());
         reportDTO.setAbsenIn(absen.getAbsenIn());
         reportDTO.setAbsenOut(absen.getAbsenOut());
-        reportDTO.setUserId(absen.getUserz().getId());
-        reportDTO.setUserName(absen.getUserz().getName());
-        reportDTO.setTotalHoursWorked(
-                (absen.getAbsenOut().getTime() - absen.getAbsenIn().getTime()) / (1000 * 60 * 60));
+
+        // Null checks for Userz
+        if (absen.getUserz() != null) {
+            reportDTO.setUserId(absen.getUserz().getIdUser());
+            reportDTO.setUserName(absen.getUserz().getNamaLengkap());
+        } else {
+            reportDTO.setUserId(null);  // or other appropriate default handling
+            reportDTO.setUserName("Unknown User");
+        }
+
+        // Calculate total hours worked safely
+        if (absen.getAbsenIn() != null && absen.getAbsenOut() != null) {
+            reportDTO.setTotalHoursWorked(
+                    (absen.getAbsenOut().getTime() - absen.getAbsenIn().getTime()) / (1000 * 60 * 60)
+            );
+        } else {
+            reportDTO.setTotalHoursWorked(0L);
+        }
+
         return reportDTO;
     }
+
+    public AbsenResponseDTO findById(Long id) {
+        Optional<Absen> optionalAbsen = absenRepository.findById(id);
+        return optionalAbsen.map(this::convertToResponseDTO).orElse(null);
+    }
+
+    public List<AbsenResponseDTO> findAllAbsen(Pageable pageable) {
+        List<Absen> absens = absenRepository.findAll(pageable).getContent();
+        return absens.stream()
+                .map(this::convertToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public AbsenResponseDTO updateAbsen(Long id, AbsenValidationDTO absenDTO) {
+        Optional<Absen> optionalAbsen = absenRepository.findById(id);
+        if (optionalAbsen.isEmpty()) {
+            return null; // Handle error appropriately
+        }
+
+        Absen absen = optionalAbsen.get();
+        absen.setAbsenIn(absenDTO.getAbsenIn());
+        absen.setAbsenOut(absenDTO.getAbsenOut());
+        // Update other fields as necessary
+
+        Absen updatedAbsen = absenRepository.save(absen);
+        return convertToResponseDTO(updatedAbsen);
+    }
+
 }

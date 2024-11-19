@@ -83,4 +83,8 @@ public class GenerateMenuString {
                 .map(GenerateMenuString::generateMenuString)
                 .collect(Collectors.joining("\n"));
     }
+
+    public Object menuInnerHtml(Akses akses) {
+        return null;
+    }
 }

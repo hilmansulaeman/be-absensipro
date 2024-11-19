@@ -25,4 +25,8 @@ public class AksesValidasiDTO {
     public void setDivisiId(Long divisiId) {
         this.divisiId = divisiId;
     }
+
+    public Object getIdAkses() {
+        return null;
+    }
 }

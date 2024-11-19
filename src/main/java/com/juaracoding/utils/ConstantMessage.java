@@ -53,4 +53,33 @@ public class ConstantMessage {
     public static final String ERROR_MARTIALSTATUS_CONFIRM_LENGTH = "ERROR MARTIAL STATUS" ;
     public static final String ERROR_EMAIL_INVALID = "EMAIL INVALID";
     public static final Object SUCCESS_SAVE_USER = "SIMPAN USER BERHASIL" ;
+    public static final String ERROR_FLOW_INVALID = " ";
+    public static final String SUCCESS_CHECK_REGIS = "";
+    public static final String ERROR_NOHP_ISEXIST = "";
+
+    public static final String ERROR_USER_ISACTIVE ="" ;
+    public static final String ERROR_USER_NOT_EXISTS = "";
+    public static final String ERROR_TOKEN_FORGOTPWD_NOT_SAME = "";
+    public static final String SUCCESS_TOKEN_MATCH = "";
+    public static final String SUCCESS_SEND_NEW_TOKEN = "";
+    public static final String SUCCESS_CHANGE_PWD = "";
+    public static final String SUCCESS_SAVE = "";
+    public static final String ERROR_PASSWORD_CONFIRM_FAILED = "";
+    public static final String ERROR_SAVE_FAILED = "";
+    public static final String SUCCESS_UPDATE = "";
+    public static final String WARNING_MENU_NOT_EXISTS = "" ;
+    public static final String ERROR_EMPTY_FILE = "" ;
+
+    public static final String WARNING_DATA_EMPTY = "No data found.";
+    public static final String ERROR_INTERNAL_SERVER = "Internal server error occurred.";
+    public static final String SUCCESS_FIND_BY = "Data found successfully.";
+
+    public static final String ERROR_PHONE_NUMBER_FORMAT_INVALID = "" ;
+    public static final String ERROR_EMAIL_FORMAT_INVALID = "" ;
+    public static final String SUCCESS_DELETE = "";
+    public static final String USER_IS_ACTIVE = "";
+    public static final String VERIFY_LINK_VALID = "";
+    public static final String WARNING_MENU_PATH_INVALID = "";
+    public static final String WARNING_MENU_END_POINTS_INVALID = "";
+    public static final String WARNING_DEMO_NOT_EXISTS = "";
 }

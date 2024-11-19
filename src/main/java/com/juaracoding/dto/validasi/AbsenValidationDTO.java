@@ -1,5 +1,7 @@
 package com.juaracoding.dto.validasi;
 
+import com.juaracoding.model.Userz;
+
 import java.util.Date;
 
 public class AbsenValidationDTO {private Long userId;
@@ -31,5 +33,9 @@ public class AbsenValidationDTO {private Long userId;
 
     public void setAbsenOut(Date absenOut) {
         this.absenOut = absenOut;
+    }
+
+    public Object getListUser() {
+        return null;
     }
 }

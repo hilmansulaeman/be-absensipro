@@ -1,34 +1,33 @@
 package com.juaracoding.model;
 
 import jakarta.persistence.*;
+import java.util.Date;
 
-import java.util.*;
-
-/*
-    KODE MODUL 03
- */
 @Entity
 @Table(name = "TrxAbsen")
 public class Absen {
 
     @Id
-    @Column(name = "IDAbsen")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "IDAbsen")
     private Long idAbsen;
 
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "AbsenIn")
     private Date absenIn;
+
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "AbsenOut")
     private Date absenOut;
 
     @ManyToOne
-    @JoinColumn(name = "IDUser")
+    @JoinColumn(name = "IDUser", referencedColumnName = "IDUser")
     private Userz userz;
 
     @Column(name = "IsDelete", nullable = false)
-    private Byte isDelete = 1;//khusus disini default 0 karena setelah verifikasi baru di update menjadi 1
+    private Byte isDelete = 0; // Default 0 untuk menandai absen aktif
 
-
+    // Getters and Setters
     public Long getIdAbsen() {
         return idAbsen;
     }

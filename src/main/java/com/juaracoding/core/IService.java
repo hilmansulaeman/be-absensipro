@@ -15,4 +15,5 @@ public interface IService<T> {
     public ResponseEntity<Object> findByParam(Pageable pageable,String columnName, String value, HttpServletRequest request);//051-060
 //    public ResponseEntity<Object> uploadDataExcel(MultipartFile multipartFile, HttpServletRequest request);//061-070
 //    public void downloadReportExcel(String filterBy, String value, HttpServletRequest request, HttpServletResponse response);//071-080
+
 }

@@ -6,51 +6,58 @@ import com.juaracoding.dto.report.EmployeeReportDTO;
 import com.juaracoding.model.Employee;
 import com.juaracoding.repo.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class EmployeeService {
 
-    private final EmployeeRepository employeeRepository;
+
+    private EmployeeRepository employeeRepo;
 
     @Autowired
-    public EmployeeService(EmployeeRepository employeeRepository) {
-        this.employeeRepository = employeeRepository;
+    public EmployeeService(EmployeeRepository employeeRepo) {
+        this.employeeRepo = employeeRepo;
     }
 
-    public EmployeeResponseDTO createEmployee(EmployeeRequestDTO requestDTO) {
-        Employee employee = new Employee();
-        employee.setFirstName(requestDTO.getFirstName());
-        employee.setLastName(requestDTO.getLastName());
-        employee.setEmail(requestDTO.getEmail());
 
-        Employee savedEmployee = employeeRepository.save(employee);
-        return new EmployeeResponseDTO(savedEmployee.getIdEmployee(), savedEmployee.getFirstName(), savedEmployee.getLastName(), savedEmployee.getEmail());
+    public List<Employee> getAllEmployees() {
+        return employeeRepo.findAll();
     }
 
-    public EmployeeResponseDTO getEmployeeById(long id) {
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-        return new EmployeeResponseDTO(employee.getIdEmployee(), employee.getFirstName(), employee.getLastName(), employee.getEmail());
+    public void saveEmployee(Employee employee) {
+        this.employeeRepo.save(employee);
     }
 
-    public List<EmployeeResponseDTO> getAllEmployees() {
-        return employeeRepository.findAll().stream()
-                .map(emp -> new EmployeeResponseDTO(emp.getIdEmployee(), emp.getFirstName(), emp.getLastName(), emp.getEmail()))
-                .collect(Collectors.toList());
+    public Employee getEmployeeById(long id) {
+        Optional<Employee> optional = employeeRepo.findById(id);
+        Employee employee = null;
+        if (optional.isPresent()) {
+            employee = optional.get();
+        } else {
+            throw new RuntimeException(" Employee not found for id :: " + id);
+        }
+        return employee;
     }
 
-    public EmployeeReportDTO generateEmployeeReport(long id) {
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-        String fullName = employee.getFirstName() + " " + employee.getLastName();
-        return new EmployeeReportDTO(employee.getIdEmployee(), fullName, employee.getEmail());
+    public void deleteEmployeeById(long id) {
+        this.employeeRepo.deleteById(id);
     }
 
-    public void deleteEmployee(long id) {
-        employeeRepository.deleteById(id);
+    public Page<Employee> findPaginated(int pageNo, int pageSize, String sortField, String sortDirection) {
+        Sort sort = sortDirection.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortField).ascending() :
+                Sort.by(sortField).descending();
+
+        Pageable pageable = PageRequest.of(pageNo - 1, pageSize, sort);
+        return this.employeeRepo.findAll(pageable);
     }
 }

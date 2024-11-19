@@ -1,99 +1,254 @@
 package com.juaracoding.controller;
 
+import com.juaracoding.dto.response.UserResponseDTO;
 import com.juaracoding.dto.validasi.UserValidasiDTO;
 import com.juaracoding.dto.validasi.VerifikasiForgotPasswordDTO;
 import com.juaracoding.model.Userz;
-import com.juaracoding.security.JwtUtility;
 import com.juaracoding.service.UserService;
-import com.juaracoding.utils.GlobalFunction;
 import com.juaracoding.utils.ConstantMessage;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
+import com.juaracoding.utils.MappingAttribute;
+import com.juaracoding.handler.FormatValidation;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.WebRequest;
+import jakarta.validation.Valid;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.util.Optional;
-
-@RestController
-@RequestMapping("/auth")
+@Controller
+@RequestMapping("/api/authz")
 public class AuthController {
 
     private final UserService userService;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtility jwtUtility;
+    private final ModelMapper modelMapper;
+    private final MappingAttribute mappingAttribute = new MappingAttribute();
+    private Map<String, Object> objectMapper = new HashMap<>();
 
     @Autowired
-    public AuthController(UserService userService, PasswordEncoder passwordEncoder, JwtUtility jwtUtility) {
+    public AuthController(UserService userService, ModelMapper modelMapper) {
         this.userService = userService;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtUtility = jwtUtility;
+        this.modelMapper = modelMapper;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<Object> registerUser(@Valid @RequestBody UserValidasiDTO userDTO, HttpServletRequest request) {
-        if (userService.existsByEmail(userDTO.getEmail())) {
-            return GlobalFunction.validasiGagal(ConstantMessage.ERROR_EMAIL_ISEXIST, "USER_ALREADY_EXISTS", request);
-        }
-        if (userService.existsByUsername(userDTO.getUsername())) {
-            return GlobalFunction.validasiGagal(ConstantMessage.ERROR_USERNAME_ISEXIST, "USER_ALREADY_EXISTS", request);
+    /*
+     * Validasi Form Registrasi
+     */
+    @PostMapping("/v1/register")
+    public String registerUser(@ModelAttribute("usr") @Valid UserValidasiDTO userValidasiDTO,
+                               BindingResult bindingResult, Model model, WebRequest request) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("usr", userValidasiDTO);
+            return "auth/register";
         }
 
-        Userz user = new Userz();
-        user.setEmail(userDTO.getEmail());
-        user.setUsername(userDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        user.setNoHP(userDTO.getNoHP());
-        userService.save(user, request);
+        if (!FormatValidation.phoneNumberFormatValidation(userValidasiDTO.getNoHP(), null)) {
+            mappingAttribute.setErrorMessage(bindingResult, ConstantMessage.ERROR_PHONE_NUMBER_FORMAT_INVALID);
+            model.addAttribute("usr", userValidasiDTO);
+            return "auth/register";
+        }
 
-        return GlobalFunction.dataBerhasilDisimpan(request);
+        // Map dari DTO ke entity sebelum diteruskan ke userService
+        Userz user = modelMapper.map(userValidasiDTO, Userz.class);
+        Map<String, Object> response = userService.checkRegis(user, request);
+
+        if (ConstantMessage.ERROR_FLOW_INVALID.equals(response.get("message"))) {
+            return "redirect:/api/check/logout";
+        }
+
+        if ((Boolean) response.get("success")) {
+            mappingAttribute.setAttribute(model, response);
+            model.addAttribute("verifyEmail", userValidasiDTO.getEmail());
+            model.addAttribute("usr", new UserValidasiDTO());
+            return "auth/verifikasi";
+        } else {
+            mappingAttribute.setErrorMessage(bindingResult, response.get("message").toString());
+            model.addAttribute("usr", userValidasiDTO);
+            return "auth/register";
+        }
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<Object> loginUser(@RequestBody UserValidasiDTO userDTO, HttpServletRequest request) {
-        Optional<Userz> userOptional = userService.findByEmail(userDTO.getEmail());
-
-        if (userOptional.isEmpty() ||
-                !passwordEncoder.matches(userDTO.getPassword(), userOptional.get().getPassword())) {
-            return GlobalFunction.validasiGagal(ConstantMessage.ERROR_LOGIN_FAILED, "LOGIN_FAILED", request);
+    /*
+     * Verifikasi Token untuk Pendaftaran
+     */
+    @PostMapping("/v1/verify")
+    public String verifyRegistrationToken(@ModelAttribute("usr") @Valid UserValidasiDTO userValidasiDTO,
+                                          BindingResult bindingResult, Model model,
+                                          @RequestParam("email") String email, WebRequest request) {
+        if (email.isEmpty() || !FormatValidation.emailFormatValidation(email, null)) {
+            return "redirect:/api/check/logout";
         }
 
-        Userz user = userOptional.get();
-        String token = jwtUtility.generateToken(user);
+        String token = userValidasiDTO.getPassword(); // Asumsikan token disimpan di password
+        if (token.isEmpty() || token.length() != 6) {
+            mappingAttribute.setErrorMessage(bindingResult, ConstantMessage.ERROR_TOKEN_INVALID);
+            model.addAttribute("verifyEmail", email);
+            return "auth/verifikasi";
+        }
 
-        return GlobalFunction.customDataDitemukan(ConstantMessage.SUCCESS_LOGIN, token, request);
+        // Map dari DTO ke entity sebelum diteruskan ke userService
+        Userz user = modelMapper.map(userValidasiDTO, Userz.class);
+        Map<String, Object> response = userService.confirmRegis(user, email, request);
+
+        if (ConstantMessage.ERROR_FLOW_INVALID.equals(response.get("message"))) {
+            return "redirect:/api/check/logout";
+        }
+
+        if ((Boolean) response.get("success")) {
+            mappingAttribute.setErrorMessage(bindingResult, "REGISTRASI BERHASIL SILAHKAN LOGIN");
+            model.addAttribute("usr", new UserValidasiDTO());
+            return "auth/login";
+        } else {
+            model.addAttribute("verifyEmail", email);
+            mappingAttribute.setErrorMessage(bindingResult, response.get("message").toString());
+            return "auth/verifikasi";
+        }
     }
 
-    @PostMapping("/forgot-password")
-    public ResponseEntity<Object> forgotPassword(@RequestParam String email, HttpServletRequest request) {
-        Optional<Userz> userOptional = userService.findByEmail(email);
-
-        if (userOptional.isEmpty()) {
-            return GlobalFunction.dataTidakDitemukan(request);
+    /*
+     * Login User
+     */
+    @PostMapping("/v1/login")
+    public String loginUser(@ModelAttribute("usr") @Valid UserValidasiDTO userValidasiDTO,
+                            BindingResult bindingResult, Model model, WebRequest request) {
+        if (bindingResult.hasErrors()) {
+            return "auth/login";
         }
 
-        String token = jwtUtility.generateTokenForPasswordReset(userOptional.get());
-        return GlobalFunction.customDataDitemukan(ConstantMessage.SUCCESS_SEND_EMAIL, token, request);
+        // Map dari DTO ke entity sebelum diteruskan ke userService
+        Userz user = modelMapper.map(userValidasiDTO, Userz.class);
+        Map<String, Object> response = userService.doLogin(user, request);
+
+        if (!(Boolean) response.get("success")) {
+            mappingAttribute.setErrorMessage(bindingResult, response.get("message").toString());
+            return "auth/login";
+        }
+
+        Userz loggedInUser = (Userz) response.get("data");
+        request.setAttribute("USR_ID", loggedInUser.getIdUser(), WebRequest.SCOPE_SESSION);
+        request.setAttribute("EMAIL", loggedInUser.getEmail(), WebRequest.SCOPE_SESSION);
+        mappingAttribute.setAttribute(model, response, request);
+
+        return "admin/dashboard";
     }
 
-    @PostMapping("/reset-password")
-    public ResponseEntity<Object> resetPassword(@Valid @RequestBody VerifikasiForgotPasswordDTO resetDTO, HttpServletRequest request) {
-        Optional<Userz> userOptional = userService.findByEmail(resetDTO.getEmail());
-
-        if (userOptional.isEmpty() || !jwtUtility.validatePasswordResetToken(resetDTO.getToken(), resetDTO.getEmail())) {
-            return GlobalFunction.validasiGagal(ConstantMessage.ERROR_TOKEN_INVALID, "TOKEN_INVALID", request);
+    /*
+     * Lupa Password - Kirim Email
+     */
+    @PostMapping("/v1/forgetpwd")
+    public String forgotPassword(@ModelAttribute("forgetpwd") @Valid VerifikasiForgotPasswordDTO forgotPasswordDTO,
+                                 BindingResult bindingResult, Model model, WebRequest request) {
+        String email = forgotPasswordDTO.getEmail();
+        if (email.isEmpty() || !FormatValidation.emailFormatValidation(email, null)) {
+            mappingAttribute.setErrorMessage(bindingResult, ConstantMessage.ERROR_EMAIL_FORMAT_INVALID);
+            return "auth/forget_pwd_email";
         }
 
-        Userz user = userOptional.get();
-
-        if (resetDTO.getPasswordBaru().equals(resetDTO.getPassword())) {
-            return GlobalFunction.validasiGagal(ConstantMessage.ERROR_PASSWORD_IS_SAME, "PASSWORD_SAME", request);
+        Map<String, Object> response = userService.sendMailForgetPwd(email, request);
+        if (ConstantMessage.ERROR_FLOW_INVALID.equals(response.get("message"))) {
+            return "redirect:/api/check/logout";
         }
 
-        user.setPassword(passwordEncoder.encode(resetDTO.getPasswordBaru()));
-        userService.update(user.getIdUser(), user, request);
+        if ((Boolean) response.get("success")) {
+            model.addAttribute("forgetpwd", new VerifikasiForgotPasswordDTO());
+            return "auth/forget_pwd_verifikasi";
+        } else {
+            mappingAttribute.setErrorMessage(bindingResult, response.get("message").toString());
+            return "auth/forget_pwd_email";
+        }
+    }
 
-        return GlobalFunction.dataBerhasilDiubah(request);
+    /*
+     * Verifikasi Token untuk Lupa Password
+     */
+    @PostMapping("/v1/vertokenfp")
+    public String verifyForgotPasswordToken(@ModelAttribute("forgetpwd") @Valid VerifikasiForgotPasswordDTO forgotPasswordDTO,
+                                            BindingResult bindingResult, Model model, WebRequest request) {
+        String email = forgotPasswordDTO.getEmail();
+        String token = forgotPasswordDTO.getToken();
+
+        if (email.isEmpty() || !FormatValidation.emailFormatValidation(email, null) || token.isEmpty() || token.length() != 6) {
+            mappingAttribute.setErrorMessage(bindingResult, ConstantMessage.ERROR_TOKEN_INVALID);
+            model.addAttribute("forgetpwd", forgotPasswordDTO);
+            return "auth/forget_pwd_verifikasi";
+        }
+
+        Map<String, Object> response = userService.confirmTokenForgotPwd(forgotPasswordDTO, request);
+        if (ConstantMessage.ERROR_FLOW_INVALID.equals(response.get("message"))) {
+            return "redirect:/api/check/logout";
+        }
+
+        if ((Boolean) response.get("success")) {
+            forgotPasswordDTO.setToken("");
+            model.addAttribute("forgetpwd", forgotPasswordDTO);
+            return "auth/forget_password";
+        } else {
+            mappingAttribute.setErrorMessage(bindingResult, response.get("message").toString());
+            return "auth/forget_pwd_verifikasi";
+        }
+    }
+
+    /*
+     * Reset Password
+     */
+    @PostMapping("/v1/cfpwd")
+    public String resetPassword(@ModelAttribute("forgetpwd") @Valid VerifikasiForgotPasswordDTO forgotPasswordDTO,
+                                BindingResult bindingResult, Model model, WebRequest request) {
+        if (bindingResult.hasErrors()) {
+            return "auth/forget_password";
+        }
+
+        String email = forgotPasswordDTO.getEmail();
+        if (email.isEmpty() || !FormatValidation.emailFormatValidation(email, null)) {
+            return "redirect:/api/check/logout";
+        }
+
+        Map<String, Object> response = userService.confirmPasswordChange(forgotPasswordDTO, request);
+        if (ConstantMessage.ERROR_FLOW_INVALID.equals(response.get("message"))) {
+            return "redirect:/api/check/logout";
+        }
+
+        if ((Boolean) response.get("success")) {
+            model.addAttribute("usr", new UserValidasiDTO());
+            return "auth/login";
+        } else {
+            mappingAttribute.setErrorMessage(bindingResult, response.get("message").toString());
+            return "auth/forget_password";
+        }
+    }
+
+    /*
+     * API Generate Token Baru untuk Lupa Password
+     */
+    @GetMapping("/v1/ntverfp")
+    public String requestNewTokenForForgetPassword(@ModelAttribute("forgetPwd") @Valid VerifikasiForgotPasswordDTO forgetPasswordDTO,
+                                                   BindingResult bindingResult, Model model,
+                                                   @RequestParam("emailz") String email, WebRequest request) {
+        forgetPasswordDTO.setToken(""); // Kosongkan token untuk menghapus inputan sebelumnya
+        forgetPasswordDTO.setEmail(email);
+
+        if (email == null || email.isEmpty() || !FormatValidation.emailFormatValidation(email, null)) {
+            return "redirect:/api/check/logout";
+        }
+
+        objectMapper = userService.getNewToken(email, request);
+
+        if (ConstantMessage.ERROR_FLOW_INVALID.equals(objectMapper.get("message"))) {
+            return "redirect:/api/check/logout";
+        }
+
+        Boolean isSuccess = (Boolean) objectMapper.get("success");
+        if (isSuccess) {
+            model.addAttribute("forgetPwd", forgetPasswordDTO);
+            mappingAttribute.setAttribute(model, objectMapper);
+            return "auth/forget_pwd_verifikasi";
+        } else {
+            mappingAttribute.setErrorMessage(bindingResult, objectMapper.get("message").toString());
+            model.addAttribute("forgetPwd", forgetPasswordDTO);
+            return "auth/login";
+        }
     }
 }

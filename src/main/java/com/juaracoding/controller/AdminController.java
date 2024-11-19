@@ -5,102 +5,128 @@ import com.juaracoding.dto.validasi.UserValidasiDTO;
 import com.juaracoding.model.Userz;
 import com.juaracoding.service.UserService;
 import com.juaracoding.utils.ConstantMessage;
+import com.juaracoding.utils.GenerateMenuString;
 import com.juaracoding.utils.MappingAttribute;
 import jakarta.servlet.http.HttpServletRequest;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import org.springframework.web.context.request.WebRequest;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
-@RestController
+@Controller
 @RequestMapping("/admin")
 public class AdminController {
 
     private final UserService userService;
-    private final ModelMapper modelMapper;
     private final MappingAttribute mappingAttribute;
+    private final ModelMapper modelMapper;
+    private final String[] strExceptionArr = new String[]{"UserController"};
+
+    private final Map<String, Object> objectMapper = new HashMap<>();
 
     @Autowired
-    public AdminController(UserService userService, ModelMapper modelMapper, MappingAttribute mappingAttribute) {
+    public AdminController(UserService userService, MappingAttribute mappingAttribute, ModelMapper modelMapper) {
         this.userService = userService;
-        this.modelMapper = modelMapper;
         this.mappingAttribute = mappingAttribute;
+        this.modelMapper = modelMapper;
     }
 
-    // Endpoint untuk menambahkan user baru
-    @PostMapping("/users")
-    public ResponseEntity<Object> createUser(@Valid @RequestBody UserValidasiDTO userDTO, HttpServletRequest request, BindingResult result, Model model) {
-        if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body(mappingAttribute.setErrorMessage(result, "Invalid input data"));
+    @PostMapping("/v1/dashboard")
+    public String login(@ModelAttribute("usr") @Valid UserValidasiDTO userValidasiDTO,
+                        BindingResult bindingResult,
+                        Model model,
+                        WebRequest request) {
+
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("usr", new UserValidasiDTO());
+            return "auth/login";
         }
 
-        // Konversi DTO ke entitas Userz
-        Userz user = modelMapper.map(userDTO, Userz.class);
-        ResponseEntity<Object> response = userService.save(user, request);
+        // Konversi UserValidasiDTO ke entitas Userz
+        Userz userz = modelMapper.map(userValidasiDTO, Userz.class);
 
-        Map<String, Object> responseMap = new HashMap<>();
-        responseMap.put("message", ConstantMessage.SUCCESS_SAVE_USER);
-        responseMap.put("status", HttpStatus.CREATED);
-        responseMap.put("data", response.getBody());
+        // Panggil metode login di UserService
+        objectMapper.clear();
+        objectMapper.putAll(userService.doLogin(userz, request));
 
-        mappingAttribute.setAttribute(model, responseMap);
-        return response;
-    }
+        Boolean isSuccess = (Boolean) objectMapper.get("success");
+        Object userData = objectMapper.get("data");
 
-    // Endpoint untuk mengambil semua data user dengan paginasi
-    @GetMapping("/users")
-    public ResponseEntity<Object> getAllUsers(@RequestParam(defaultValue = "0") int page,
-                                              @RequestParam(defaultValue = "10") int size,
-                                              HttpServletRequest request) {
-        Pageable pageable = PageRequest.of(page, size);
-        return userService.findAll(pageable, request);
-    }
-
-    // Endpoint untuk mencari user berdasarkan ID
-    @GetMapping("/users/{id}")
-    public ResponseEntity<Object> getUserById(@PathVariable Long id, HttpServletRequest request) {
-        return userService.findById(id, request);
-    }
-
-    // Endpoint untuk mengupdate data user
-    @PutMapping("/users/{id}")
-    public ResponseEntity<Object> updateUser(@PathVariable Long id,
-                                             @Valid @RequestBody UserValidasiDTO userDTO,
-                                             HttpServletRequest request,
-                                             BindingResult result, Model model) {
-        if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body(mappingAttribute.setErrorMessage(result, "Invalid input data"));
+        if (userData == null) {
+            mappingAttribute.setErrorMessage(bindingResult, (String) objectMapper.get("message"));
+            model.addAttribute("usr", new UserValidasiDTO());
+            return "auth/login";
         }
 
-        Userz user = modelMapper.map(userDTO, Userz.class);
-        return userService.update(id, user, request);
+        if (isSuccess) {
+            Userz nextUser = (Userz) userData;
+
+            // Set session attributes
+            setSessionAttributes(request, nextUser);
+
+            // Map attributes to model
+            mappingAttribute.setAttribute(model, objectMapper, request);
+            return "admin/dashboard";
+        } else {
+            mappingAttribute.setErrorMessage(bindingResult, (String) objectMapper.get("message"));
+            return "auth/login";
+        }
     }
 
-    // Endpoint untuk menghapus user berdasarkan ID
-    @DeleteMapping("/users/{id}")
-    public ResponseEntity<Object> deleteUser(@PathVariable Long id, HttpServletRequest request) {
-        return userService.delete(id, request);
+    private void setSessionAttributes(WebRequest request, Userz user) {
+        request.setAttribute("USR_ID", user.getIdUser(), WebRequest.SCOPE_SESSION);
+        request.setAttribute("EMAIL", user.getEmail(), WebRequest.SCOPE_SESSION);
+        request.setAttribute("NO_HP", user.getNoHP(), WebRequest.SCOPE_SESSION);
+        request.setAttribute("USR_NAME", user.getUsername(), WebRequest.SCOPE_SESSION);
+        request.setAttribute("HTML_MENU", new GenerateMenuString().menuInnerHtml(user.getAkses()), WebRequest.SCOPE_SESSION);
     }
 
-    // Endpoint untuk mencari user berdasarkan parameter tertentu (email atau username)
-    @GetMapping("/users/search")
-    public ResponseEntity<Object> searchUsers(@RequestParam String columnName,
-                                              @RequestParam String value,
-                                              @RequestParam(defaultValue = "0") int page,
-                                              @RequestParam(defaultValue = "10") int size,
-                                              HttpServletRequest request) {
-        Pageable pageable = PageRequest.of(page, size);
-        return userService.findByParam(pageable, columnName, value, request);
+    @GetMapping("/form")
+    public String form(Model model, WebRequest request) {
+        mappingAttribute.setAttribute(model, objectMapper, request);
+        return "admin/form-elements";
+    }
+
+    @GetMapping("/tabel")
+    public String tabel() {
+        return "admin/table-elements";
+    }
+
+    @GetMapping("/karyawan")
+    public String karyawan() {
+        return "admin/master-karyawan";
+    }
+
+    @GetMapping("/absen")
+    public String absen() {
+        return "admin/master-absen";
+    }
+
+    @GetMapping("/report")
+    public String report(Model model, WebRequest request) {
+        mappingAttribute.setAttribute(model, objectMapper, request);
+        return "admin/report";
+    }
+
+    @GetMapping("/student")
+    public String student(Model model, WebRequest request) {
+        mappingAttribute.setAttribute(model, objectMapper, request);
+        return "admin/student";
+    }
+
+    @GetMapping("/logout")
+    public String destroySession(HttpServletRequest request) {
+        request.getSession().invalidate();
+        return "redirect:/";
     }
 }

@@ -97,6 +97,9 @@ public class Userz {
     @JoinColumn(name = "IDDivisi")
     private Divisi divisi;
 
+    public Userz() {
+    }
+
     public Divisi getDivisi() {
         return divisi;
     }

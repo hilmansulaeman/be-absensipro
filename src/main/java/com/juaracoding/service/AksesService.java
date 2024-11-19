@@ -12,7 +12,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.WebRequest;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -52,28 +55,45 @@ public class AksesService {
         return GlobalFunction.dataBerhasilDisimpan(request);
     }
 
-    public ResponseEntity<Object> updateAkses(Long id, AksesValidasiDTO aksesDTO, HttpServletRequest request) {
-        Optional<Akses> aksesOptional = aksesRepository.findById(id);
-        if (aksesOptional.isEmpty()) {
-            return GlobalFunction.dataTidakDitemukan(request);
+    // Method to save a new Akses
+    public Map<String, Object> saveAkses(Akses akses, WebRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Akses savedAkses = aksesRepository.save(akses);
+            response.put("success", true);
+            response.put("idDataSave", savedAkses.getIdAkses());
+            return response;
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Failed to save Akses");
+            return response;
         }
-
-        Akses akses = aksesOptional.get();
-        akses.setNamaAkses(aksesDTO.getNamaAkses());
-
-        // Update Divisi jika diberikan
-        if (aksesDTO.getDivisiId() != null) {
-            Optional<Divisi> divisiOptional = divisiRepository.findById(aksesDTO.getDivisiId());
-            if (divisiOptional.isEmpty()) {
-                System.out.println("Divisi ID tidak ditemukan di database.");
-                return GlobalFunction.validasiGagal("Divisi tidak ditemukan", "DIVISI_NOT_FOUND", request);
-            }
-            akses.setDivisi(divisiOptional.get());
-        }
-
-        aksesRepository.save(akses);
-        return GlobalFunction.dataBerhasilDiubah(request);
     }
+
+    // Method to update an existing Akses
+    public Map<String, Object> updateAkses(Long id, Akses akses, WebRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Optional<Akses> existingAkses = aksesRepository.findById(id);
+            if (existingAkses.isPresent()) {
+                Akses updatedAkses = existingAkses.get();
+                updatedAkses.setNamaAkses(akses.getNamaAkses());
+                updatedAkses.setDivisi(akses.getDivisi()); // assuming the divisi relationship exists
+                aksesRepository.save(updatedAkses);
+                response.put("success", true);
+                return response;
+            } else {
+                response.put("success", false);
+                response.put("message", "Akses not found");
+                return response;
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Failed to update Akses");
+            return response;
+        }
+    }
+
 
     public ResponseEntity<Object> deleteAkses(Long id, HttpServletRequest request) {
         Optional<Akses> aksesOptional = aksesRepository.findById(id);
@@ -101,5 +121,28 @@ public class AksesService {
         }
 
         return GlobalFunction.customDataDitemukan("Akses data found", aksesPage.getContent(), request);
+    }
+
+    public Map<String, Object> findAllAkses(Pageable pageable, WebRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Page<Akses> aksesPage = aksesRepository.findAll(pageable);
+            if (aksesPage.isEmpty()) {
+                response.put("message", "Data kosong");
+                response.put("success", false);
+                return response;
+            }
+            response.put("data", aksesPage.getContent());
+            response.put("success", true);
+            return response;
+        } catch (Exception e) {
+            response.put("message", "Terjadi kesalahan");
+            response.put("success", false);
+            return response;
+        }
+    }
+
+    public Map<String, ?> findById(Long id, WebRequest request) {
+        return null;
     }
 }

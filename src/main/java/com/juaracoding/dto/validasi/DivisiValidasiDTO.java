@@ -3,6 +3,7 @@ package com.juaracoding.dto.validasi;
 import jakarta.validation.constraints.NotEmpty;
 
 public class DivisiValidasiDTO {
+    private Long idDivisi;
 
     @NotEmpty(message = "Nama divisi tidak boleh kosong.")
     private String namaDivisi;
@@ -13,6 +14,14 @@ public class DivisiValidasiDTO {
     private String deskripsiDivisi;
 
     // Getters and Setters
+    public Long getIdDivisi() {
+        return idDivisi;
+    }
+
+    public void setIdDivisi(Long idDivisi) {
+        this.idDivisi = idDivisi;
+    }
+
     public String getNamaDivisi() {
         return namaDivisi;
     }

@@ -52,4 +52,20 @@ public class UserValidasiDTO {
     public void setNoHP(String noHP) {
         this.noHP = noHP;
     }
+
+    @NotNull(message = "Akses is required.")
+    private AksesValidasiDTO akses;
+
+    // Getter and Setter for Akses
+    public AksesValidasiDTO getAkses() {
+        return akses;
+    }
+
+    public void setAkses(AksesValidasiDTO akses) {
+        this.akses = akses;
+    }
+
+    public void setIdUser(Long id) {
+
+    }
 }

@@ -10,4 +10,6 @@ import java.util.List;
 public interface AbsenRepository extends JpaRepository<Absen, Long> {
     List<Absen> findByUserzId(Long userId);
     List<Absen> findByIsDelete(Byte isDelete);
+
+    List<Absen> findByAbsenOutAndUserzIdUser(Object o, Long userId);
 }
